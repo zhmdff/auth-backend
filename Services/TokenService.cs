@@ -17,12 +17,13 @@ namespace Auth.Services
             _jwtSettings = jwtSettings.Value;
         }
 
-        public string GenerateAccessToken(int userId, string email)
+        public string GenerateAccessToken(int userId, string email, string fullName)
         {
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.Name, fullName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

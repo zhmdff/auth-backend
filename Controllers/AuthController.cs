@@ -34,7 +34,7 @@ namespace Auth.Controllers
                 return Unauthorized(new { message = "Invalid email or password." });
             }
 
-            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email);
+            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.FullName);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             Console.WriteLine($"[DEBUG] Generated tokens. Access: {accessToken}, Refresh: {refreshToken}");
@@ -66,7 +66,7 @@ namespace Auth.Controllers
                 return Unauthorized(new { message = "Invalid or expired refresh token" });
 
             var user = await _userRepository.GetByIdAsync(storedToken.UserId);
-            var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email);
+            var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.FullName);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
             await _tokenRepository.RevokeRefreshToken(refreshToken);
@@ -90,7 +90,7 @@ namespace Auth.Controllers
         public IActionResult Dashboard()
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
-            var fullName = User.FindFirst("fullName")?.Value;
+            var fullName = User.FindFirstValue(ClaimTypes.Name);
 
             return Ok(new
             {
