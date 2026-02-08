@@ -2,6 +2,7 @@ using Auth.Models;
 using Auth.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace Auth.Controllers
@@ -10,13 +11,14 @@ namespace Auth.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
-        public AuthController(AuthService authService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
         }
 
+        [EnableRateLimiting("auth")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] AuthRequest request)
         {
@@ -26,8 +28,7 @@ namespace Auth.Controllers
 
             var result = await _authService.LoginAsync(request.Email, request.Password, ipAddress, userAgent, country);
 
-            if (!result.Success)
-                return Unauthorized(new { message = result.ErrorMessage });
+            if (!result.Success) return Unauthorized(new { message = result.ErrorMessage });
 
             Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
             {
@@ -40,8 +41,9 @@ namespace Auth.Controllers
             return Ok(new { AccessToken = result.AccessToken });
         }
 
+        [EnableRateLimiting("auth")]
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh()
+        public async Task<IActionResult> Refresh()  
         {
             if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken))
                 return Unauthorized(new { message = "Refresh token missing" });

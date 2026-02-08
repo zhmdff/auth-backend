@@ -31,6 +31,8 @@ namespace Auth.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
                 signingCredentials: creds
@@ -44,8 +46,9 @@ namespace Auth.Services
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
 
-        public ClaimsPrincipal ValidateToken(string token){
-            
+        public ClaimsPrincipal ValidateToken(string token)
+        {
+
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
 
@@ -53,8 +56,11 @@ namespace Auth.Services
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = false,
-                ValidateAudience = false,
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidIssuer = _jwtSettings.Issuer,
+                ValidAudience = _jwtSettings.Audience,
                 ClockSkew = TimeSpan.Zero
             };
 

@@ -15,7 +15,10 @@ namespace Auth.Repositories
 
         public Task<User?> GetByIdAsync(int id) => _db.Users.FindAsync(id).AsTask();
 
-        public Task<User?> GetByEmailAsync(string email) => _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        }
 
         public async Task<User?> ValidateCredentials(string email, string password)
         {
@@ -25,6 +28,12 @@ namespace Auth.Repositories
 
             return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash) ? user : null;
 
+        }
+
+        public async Task UpdateAsync(User user)
+        {
+            _db.Users.Update(user);
+            await _db.SaveChangesAsync();
         }
 
     }
