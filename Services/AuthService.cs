@@ -6,11 +6,11 @@ namespace Auth.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly TokenService _tokenService;
-        private readonly RefreshTokenRepository _tokenRepository;
-        private readonly AuditLogRepository _auditRepository;
+        private readonly ITokenService _tokenService;
+        private readonly IRefreshTokenRepository _tokenRepository;
+        private readonly IAuditLogRepository _auditRepository;
 
-        public AuthService( IUserRepository userRepository, TokenService tokenService, RefreshTokenRepository tokenRepository, AuditLogRepository auditRepository)
+        public AuthService( IUserRepository userRepository, ITokenService tokenService, IRefreshTokenRepository tokenRepository, IAuditLogRepository auditRepository)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;

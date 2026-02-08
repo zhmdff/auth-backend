@@ -13,7 +13,7 @@ namespace Auth.Models
         public string TokenHash { get; set; }
 
         public DateTime ExpiresAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
         public bool IsRevoked { get; set; } = false;
         public DateTime? RevokedAt { get; set; }
 

@@ -5,9 +5,7 @@ namespace Auth.Data
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-        {
-        }
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) {}
 
         public DbSet<User> Users { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -15,12 +13,23 @@ namespace Auth.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
             modelBuilder.Entity<User>().HasData(
-                new User { Id = 1, FullName = "Mahmud Ahmadov", Email = "zhmdff@gmail.com", PasswordHash = "$2a$12$t1TxFpRZaWTAVvpnTsG9JOQILUta3PKqFlJ3ILofcQhpIbD360/hK" }
+                new User
+                {
+                    Id = 1,
+                    FullName = "Mahmud Ahmadov",
+                    Email = "zhmdff@gmail.com",
+                    PasswordHash = "$2a$12$t1TxFpRZaWTAVvpnTsG9JOQILUta3PKqFlJ3ILofcQhpIbD360/hK",
+                    EmailVerified = false,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    FailedLoginAttempts = 0,
+                    IsActive = true
+                }
             );
 
-            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
 
             modelBuilder.Entity<RefreshToken>()
                 .HasIndex(rt => rt.TokenHash);
@@ -33,9 +42,6 @@ namespace Auth.Data
 
             modelBuilder.Entity<AuditLog>()
                 .HasIndex(a => a.TimestampUtc);
-
-
         }
-
     }
 }

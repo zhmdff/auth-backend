@@ -19,7 +19,7 @@ namespace Auth.Models
         public string PasswordHash { get; set; }
 
         public bool EmailVerified { get; set; } = false;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
 
         public int FailedLoginAttempts { get; set; } = 0;
