@@ -1,8 +1,7 @@
 using Auth.Models;
-using Auth.Repositories;
 using Auth.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Auth.Controllers
@@ -11,37 +10,26 @@ namespace Auth.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly TokenService _tokenService;
-        private readonly IUserRepository _userRepository;
-        private readonly RefreshTokenRepository _tokenRepository;
+        private readonly AuthService _authService;
 
-        public AuthController(TokenService tokenService, IUserRepository userRepository, RefreshTokenRepository tokenRepository)
+        public AuthController(AuthService authService)
         {
-            _tokenService = tokenService;
-            _userRepository = userRepository;
-            _tokenRepository = tokenRepository;
+            _authService = authService;
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] AuthRequest request)
         {
-            Console.WriteLine($"[DEBUG] Login attempt: {request.Email}");
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var userAgent = Request.Headers["User-Agent"].ToString();
+            var country = Request.Headers["CF-IPCountry"].FirstOrDefault() ?? "Unknown";
 
-            var user = await _userRepository.ValidateCredentials(request.Email, request.Password);
-            if (user == null)
-            {
-                Console.WriteLine("[DEBUG] Invalid credentials");
-                return Unauthorized(new { message = "Invalid email or password." });
-            }
+            var result = await _authService.LoginAsync(request.Email, request.Password, ipAddress, userAgent, country);
 
-            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.FullName);
-            var refreshToken = _tokenService.GenerateRefreshToken();
+            if (!result.Success)
+                return Unauthorized(new { message = result.ErrorMessage });
 
-            Console.WriteLine($"[DEBUG] Generated tokens. Access: {accessToken}, Refresh: {refreshToken}");
-
-            await _tokenRepository.SaveRefreshToken(user.Id, refreshToken, DateTime.UtcNow.AddDays(7));
-
-            Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
+            Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
@@ -49,11 +37,8 @@ namespace Auth.Controllers
                 Expires = DateTimeOffset.UtcNow.AddDays(7)
             });
 
-            Console.WriteLine("[DEBUG] Refresh token cookie set");
-
-            return Ok(new AuthResponse { AccessToken = accessToken });
+            return Ok(new { AccessToken = result.AccessToken });
         }
-
 
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
@@ -61,18 +46,16 @@ namespace Auth.Controllers
             if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken))
                 return Unauthorized(new { message = "Refresh token missing" });
 
-            var storedToken = await _tokenRepository.ValidateRefreshToken(refreshToken);
-            if (storedToken == null)
-                return Unauthorized(new { message = "Invalid or expired refresh token" });
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var userAgent = Request.Headers["User-Agent"].ToString();
+            var country = Request.Headers["CF-IPCountry"].FirstOrDefault() ?? "Unknown";
 
-            var user = await _userRepository.GetByIdAsync(storedToken.UserId);
-            var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.FullName);
-            var newRefreshToken = _tokenService.GenerateRefreshToken();
+            var result = await _authService.RefreshTokenAsync(refreshToken, ipAddress, userAgent, country);
 
-            await _tokenRepository.RevokeRefreshToken(refreshToken);
-            await _tokenRepository.SaveRefreshToken(user.Id, newRefreshToken, DateTime.UtcNow.AddDays(7));
+            if (!result.Success)
+                return Unauthorized(new { message = result.ErrorMessage });
 
-            Response.Cookies.Append("refreshToken", newRefreshToken, new CookieOptions
+            Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
@@ -80,9 +63,7 @@ namespace Auth.Controllers
                 Expires = DateTimeOffset.UtcNow.AddDays(7)
             });
 
-            Console.WriteLine("[DEBUG] Token refreshed");
-
-            return Ok(new AuthResponse { AccessToken = newAccessToken });
+            return Ok(new { AccessToken = result.AccessToken });
         }
 
         [Authorize]
@@ -92,11 +73,7 @@ namespace Auth.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email);
             var fullName = User.FindFirstValue(ClaimTypes.Name);
 
-            return Ok(new
-            {
-                Email = email,
-                FullName = fullName
-            });
+            return Ok(new { Email = email, FullName = fullName });
         }
     }
 }

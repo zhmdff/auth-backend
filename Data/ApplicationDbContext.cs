@@ -11,6 +11,7 @@ namespace Auth.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -19,9 +20,21 @@ namespace Auth.Data
                 new User { Id = 1, FullName = "Mahmud Ahmadov", Email = "zhmdff@gmail.com", PasswordHash = "$2a$12$t1TxFpRZaWTAVvpnTsG9JOQILUta3PKqFlJ3ILofcQhpIbD360/hK" }
             );
 
+            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+
             modelBuilder.Entity<RefreshToken>()
-                .HasIndex(rt => rt.Token)
-                .IsUnique();
+                .HasIndex(rt => rt.TokenHash);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.UserId);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.UserId);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.TimestampUtc);
+
+
         }
 
     }

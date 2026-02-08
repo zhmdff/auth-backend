@@ -1,56 +1,70 @@
 ﻿using Auth.Data;
 using Auth.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 
-public class RefreshTokenRepository
+namespace Auth.Repositories
 {
-    private readonly ApplicationDbContext _context;
-
-    public RefreshTokenRepository(ApplicationDbContext context)
+    public class RefreshTokenRepository : IRefreshTokenRepository
     {
-        _context = context;
-    }
+        private readonly ApplicationDbContext _context;
 
-    public async Task SaveRefreshToken(int userId, string token, DateTime expiresAt)
-    {
-        _context.RefreshTokens.Add(new RefreshToken
+        public RefreshTokenRepository(ApplicationDbContext context)
         {
-            UserId = userId,
-            Token = token,
-            ExpiresAt = expiresAt,
-            CreatedAt = DateTime.UtcNow,
-            IsRevoked = false
-        });
+            _context = context;
+        }
 
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task<RefreshToken?> GetRefreshToken(string token)
-    {
-        return await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == token && !rt.IsRevoked);
-    }
-
-    public async Task RevokeRefreshToken(string token)
-    {
-        var refreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == token);
-
-        if (refreshToken != null)
+        public async Task SaveRefreshToken(int userId, string token, DateTime expiresAt)
         {
-            refreshToken.IsRevoked = true;
+            var tokenHash = HashToken(token);
+
+            _context.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = userId,
+                TokenHash = tokenHash,
+                ExpiresAt = expiresAt,
+                CreatedAt = DateTime.UtcNow,
+                IsRevoked = false
+            });
+
             await _context.SaveChangesAsync();
         }
-    }
 
-    public async Task<RefreshToken?> ValidateRefreshToken(string token)
-    {
-        var refreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == token && !rt.IsRevoked);
+        public async Task<RefreshToken?> GetRefreshToken(string token)
+        {
+            var tokenHash = HashToken(token);
+            return await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash && !rt.IsRevoked);
+        }
 
-        if (refreshToken == null || refreshToken.ExpiresAt < DateTime.UtcNow)
-            return null;
+        public async Task RevokeRefreshToken(string token)
+        {
+            var tokenHash = HashToken(token);
+            var refreshToken = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
 
-        return refreshToken;
+            if (refreshToken != null)
+            {
+                refreshToken.IsRevoked = true;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<RefreshToken?> ValidateRefreshToken(string token)
+        {
+            var tokenHash = HashToken(token);
+            var refreshToken = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash && !rt.IsRevoked);
+
+            if (refreshToken == null || refreshToken.ExpiresAt < DateTime.UtcNow)
+                return null;
+
+            return refreshToken;
+        }
+
+        private string HashToken(string token)
+        {
+            using var sha256 = SHA256.Create();
+            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
+            return Convert.ToBase64String(bytes);
+        }
     }
 }

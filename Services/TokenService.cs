@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 
 namespace Auth.Services
 {
-    public class TokenService
+    public class TokenService : ITokenService
     {
         private readonly JwtSettings _jwtSettings;
 
